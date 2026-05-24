@@ -852,8 +852,9 @@ async function sendMessage() {
   } catch (err) {
     removeTyping();
     setStatus('error', 'Erro');
-    showToast('Erro ao consultar o Oráculo. Verifique as configurações.');
-    console.error(err);
+    const msg = err.message || 'Erro desconhecido';
+    showToast('Erro: ' + msg);
+    console.error('Horus error:', err);
   }
 
   isLoading = false;
@@ -872,8 +873,8 @@ async function callAPI() {
       headers: {
         'Authorization': `Bearer ${config.apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': window.location.href,
-        'X-Title': 'Oráculo Horus — Axiocosmismo'
+        'HTTP-Referer': 'https://franckparra.github.io',
+        'X-Title': 'Oraculo Horus'
       },
       body: JSON.stringify({
         model: config.model,
@@ -882,8 +883,13 @@ async function callAPI() {
         temperature: 0.7
       })
     });
-    const data = await res.json();
+    const text = await res.text();
+    console.log('OpenRouter raw response:', text);
+    let data;
+    try { data = JSON.parse(text); } catch(e) { throw new Error('Resposta inválida: ' + text); }
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${data.error?.message || text}`);
     if (data.error) throw new Error(data.error.message);
+    if (!data.choices?.[0]?.message?.content) throw new Error('Resposta vazia do modelo: ' + text);
     return data.choices[0].message.content;
 
   } else if (config.provider === 'google') {
